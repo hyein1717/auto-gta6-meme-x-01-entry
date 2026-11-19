@@ -15,7 +15,7 @@
 // stand in for /bot and /output:
 //   mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
@@ -29,3 +29,21 @@ try {
   console.error(`POST.json could not be copied from ${BOT_DIR}: ${(err as Error).message}`);
   process.exit(1);
 }
+
+// Read the handed-in copy back and check it really names a post before
+// reporting success: it must parse as JSON and carry a non-empty string
+// `url`. A malformed copy fails here instead of at the gate.
+let handedIn: { url?: unknown };
+try {
+  handedIn = JSON.parse(readFileSync(join(OUTPUT_DIR, 'POST.json'), 'utf8'));
+} catch (err) {
+  console.error(`POST.json in ${OUTPUT_DIR} is not valid JSON: ${(err as Error).message}`);
+  process.exit(1);
+}
+
+if (typeof handedIn.url !== 'string' || handedIn.url.trim() === '') {
+  console.error('POST.json does not carry a non-empty string `url` naming the post');
+  process.exit(1);
+}
+
+console.log(`handed in post: ${handedIn.url}`);
